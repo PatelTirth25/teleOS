@@ -33,7 +33,7 @@ fn main() -> ! {
     drop(buf);
 
     for _ in 0..60 {
-        print!("emuOS");
+        println!("emuOS");
     }
 
     // let width = framebuffer.width();

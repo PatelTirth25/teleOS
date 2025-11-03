@@ -37,22 +37,35 @@ pub fn boot_info() -> &'static BootInfo {
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn kmain() -> ! {
-    // All limine requests must also be referenced in a called function, otherwise they may be
-    // removed by the linker.
     assert!(BASE_REVISION.is_supported());
 
-    let framebuffer = FRAMEBUFFER_REQUEST
+    let fb_response = FRAMEBUFFER_REQUEST
         .get_response()
-        .expect("need a framebuffer")
+        .expect("No framebuffer response from Limine");
+
+    // list all framebuffers
+
+    // for (i, fb) in fb_response.framebuffers().enumerate() {
+    //     serial_println!(
+    //         "Framebuffer {}: {}x{} | Pitch: {} | BPP: {} | Address: {:#x}",
+    //         i,
+    //         fb.width(),
+    //         fb.height(),
+    //         fb.pitch(),
+    //         fb.bpp(),
+    //         fb.addr() as usize
+    //     );
+    // }
+
+    // pick the first framebuffer for now
+    let framebuffer = fb_response
         .framebuffers()
         .next()
-        .expect("need a framebuffer");
+        .expect("No framebuffer available");
 
-    let boot_info = BootInfo {
-        framebuffer,
-    };
-
+    let boot_info = BootInfo { framebuffer };
     BOOT_INFO.call_once(|| boot_info);
 
     main()
+
 }

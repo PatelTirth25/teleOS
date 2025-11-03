@@ -15,13 +15,14 @@ pub struct Writer {
 
 impl Writer {
     pub fn new(color: u32) -> Self {
-        let fb = &BUFFER.lock().fb;
+        let height = 1080 / 2 - 4;
+        let width = 1920 / 2;
         Self {
             color,
             row: 0,
             col: 0,
-            height: fb.height() / 2 - 4,
-            width: fb.width() / 2,
+            height,
+            width,
         }
     }
 
