@@ -14,9 +14,6 @@ $(call USER_VARIABLE,KARCH,x86_64)
 
 ifeq ($(RUST_TARGET),)
     override RUST_TARGET := $(KARCH)-unknown-none
-	ifeq ($(KARCH),riscv64)
-    	override RUST_TARGET := riscv64gc-unknown-none-elf
-	endif
 endif
 
 ifeq ($(RUST_PROFILE),)
@@ -31,8 +28,12 @@ endif
 # Default target.
 .PHONY: all
 all:
-	RUSTFLAGS="-C relocation-model=static" cargo build --target $(RUST_TARGET) --profile $(RUST_PROFILE)
+	RUSTFLAGS="-C relocation-model=static $(EXTRA_RUSTFLAGS)" cargo build --target $(RUST_TARGET) --profile $(RUST_PROFILE) $(CARGO_FEATURES)
 	cp target/$(RUST_TARGET)/$(RUST_PROFILE_SUBDIR)/kernel kernel
+
+.PHONY: test
+test:
+	$(MAKE) CARGO_FEATURES="--features qemu_test" all
 
 
 # Remove object files and the final executable.

@@ -5,7 +5,7 @@ use limine::request::{FramebufferRequest, HhdmRequest, MemoryMapRequest, Request
 use spin::Once;
 use crate::memory::heap::init_heap;
 use crate::memory::{self, BootInfoFrameAllocator};
-use crate::{gdt, interrupt, main};
+use crate::{gdt, interrupt, kernel_main};
 
 /// Sets the base revision to the latest revision supported by the crate.
 /// See specification for further info.
@@ -80,7 +80,7 @@ unsafe extern "C" fn kmain() -> ! {
     BOOT_INFO.call_once(|| boot_info);
     init();
 
-    main()
+    kernel_main()
 
 }
 

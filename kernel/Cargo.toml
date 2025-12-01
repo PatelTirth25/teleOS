@@ -21,7 +21,7 @@ features = ["spin_no_std"]
 [[bin]]
 name = "kernel"
 path = "src/main.rs"
-test = false
+test = true
 bench = false
 
 # the profile used for `cargo build`
@@ -31,3 +31,6 @@ panic = "abort" # disable stack unwinding on panic
 # the profile used for `cargo build --release`
 [profile.release]
 panic = "abort" # disable stack unwinding on panic
+
+[features]
+qemu_test = []

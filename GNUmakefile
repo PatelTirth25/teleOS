@@ -156,3 +156,47 @@ clean:
 distclean: clean
 	$(MAKE) -C kernel distclean
 	rm -rf limine ovmf
+
+.PHONY: test
+test: test-$(KARCH)
+
+.PHONY: test-x86_64
+test-x86_64: ovmf/ovmf-code-$(KARCH).fd ovmf/ovmf-vars-$(KARCH).fd limine/limine
+	$(MAKE) -C kernel test
+
+	rm -rf iso_root
+	mkdir -p iso_root/boot/limine iso_root/EFI/BOOT
+	cp -v kernel/kernel iso_root/boot/
+	cp -v limine.conf iso_root/boot/limine/
+	cp -v limine/limine-bios.sys limine/limine-bios-cd.bin limine/limine-uefi-cd.bin iso_root/boot/limine/
+	cp -v limine/BOOTX64.EFI iso_root/EFI/BOOT/
+	cp -v limine/BOOTIA32.EFI iso_root/EFI/BOOT/
+	xorriso -as mkisofs -b boot/limine/limine-bios-cd.bin \
+		-no-emul-boot -boot-load-size 4 -boot-info-table \
+		--efi-boot boot/limine/limine-uefi-cd.bin \
+		-efi-boot-part --efi-boot-image --protective-msdos-label \
+		iso_root -o $(IMAGE_NAME)-test.iso
+	./limine/limine bios-install $(IMAGE_NAME)-test.iso
+
+	set -o pipefail; \
+	qemu-system-$(KARCH) \
+		-M q35 \
+		-drive if=pflash,unit=0,format=raw,file=ovmf/ovmf-code-$(KARCH).fd,readonly=on \
+		-drive if=pflash,unit=1,format=raw,file=ovmf/ovmf-vars-$(KARCH).fd \
+		-cdrom $(IMAGE_NAME)-test.iso \
+		-device isa-debug-exit,iobase=0xf4,iosize=0x04 \
+		-vga none \
+		-device virtio-vga \
+		-display none \
+		-serial stdio \
+		-no-reboot \
+		$(QEMUFLAGS); \
+	code=$$?; \
+	rm -rf iso_root $(IMAGE_NAME)-test.iso; \
+	if [ $$code -eq 33 ]; then \
+		echo "[qemu] tests passed"; \
+		exit 0; \
+	else \
+		echo "[qemu] tests failed with raw code $$code"; \
+		exit 1; \
+	fi
