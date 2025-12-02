@@ -10,6 +10,7 @@ pub mod gdt;
 pub mod interrupt;
 pub mod memory;
 pub mod serial;
+mod tests;
 
 use x86_64::instructions::hlt;
 use x86_64::instructions::port::Port;
@@ -31,7 +32,6 @@ pub fn exit_qemu(code: QemuExitCode) -> ! {
     }
 }
 
-#[cfg(feature = "qemu_test")]
 pub fn lib_main() -> ! {
     println!("emuOS! from Test");
 
@@ -42,12 +42,18 @@ pub fn lib_main() -> ! {
     }
 }
 
-#[cfg(feature = "qemu_test")]
 fn tests() -> &'static [(&'static str, fn())] {
-    &[("trivial_assertion", trivial_assertion)]
+    use tests::framebuffer::test_println;
+    use tests::heap::test_heap_allocations;
+    use tests::trivial_assertion;
+
+    &[
+        ("trivial_assertion", trivial_assertion),
+        ("test_heap_allocations", test_heap_allocations),
+        ("test_println", test_println),
+    ]
 }
 
-#[cfg(feature = "qemu_test")]
 pub fn test_main() {
     for (name, f) in tests() {
         serial_print!("{}... ", name);
@@ -57,14 +63,10 @@ pub fn test_main() {
     exit_qemu(QemuExitCode::Success)
 }
 
-#[cfg(feature = "qemu_test")]
-fn trivial_assertion() {
-    assert_eq!(1, 1);
-}
-
 #[cfg(not(feature = "qemu_test"))]
 #[panic_handler]
-fn rust_panic(_info: &core::panic::PanicInfo) -> ! {
+fn rust_panic(info: &core::panic::PanicInfo) -> ! {
+    serial_print!("{}...\n", info);
     loop {
         hlt();
     }
@@ -72,6 +74,7 @@ fn rust_panic(_info: &core::panic::PanicInfo) -> ! {
 
 #[cfg(feature = "qemu_test")]
 #[panic_handler]
-fn test_panic(_info: &core::panic::PanicInfo) -> ! {
+fn test_panic(info: &core::panic::PanicInfo) -> ! {
+    serial_print!("{}...\n", info);
     exit_qemu(QemuExitCode::Failed)
 }
