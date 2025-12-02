@@ -1,4 +1,5 @@
 #![no_std]
+#![no_main]
 #![feature(abi_x86_interrupt)]
 
 extern crate alloc;
@@ -30,8 +31,8 @@ pub fn exit_qemu(code: QemuExitCode) -> ! {
     }
 }
 
-pub fn kernel_main() -> ! {
-    println!("emuOS!");
+pub fn lib_main() -> ! {
+    println!("emuOS! from Test");
 
     #[cfg(feature = "qemu_test")]
     test_main();

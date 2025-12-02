@@ -1,13 +1,13 @@
 #![no_std]
 #![no_main]
-#![feature(abi_x86_interrupt)]
 
 extern crate alloc;
 
 use kernel::println;
-use kernel::kernel_main;
+use x86_64::instructions::hlt;
 
-fn main() -> ! {
-    println!("emuOS!");
-    kernel_main()
+#[unsafe(no_mangle)]
+pub extern "C" fn kernel_main() -> ! {
+    println!("emuOS! from main.rs");
+    loop { hlt(); }
 }

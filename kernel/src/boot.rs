@@ -5,7 +5,13 @@ use limine::request::{FramebufferRequest, HhdmRequest, MemoryMapRequest, Request
 use spin::Once;
 use crate::memory::heap::init_heap;
 use crate::memory::{self, BootInfoFrameAllocator};
-use crate::{gdt, interrupt, kernel_main};
+use crate::{gdt, interrupt};
+#[cfg(feature = "qemu_test")]
+use crate::lib_main;
+#[cfg(not(feature = "qemu_test"))]
+unsafe extern "C" {
+    fn kernel_main() -> !;
+}
 
 /// Sets the base revision to the latest revision supported by the crate.
 /// See specification for further info.
@@ -80,8 +86,11 @@ unsafe extern "C" fn kmain() -> ! {
     BOOT_INFO.call_once(|| boot_info);
     init();
 
-    kernel_main()
+    #[cfg(feature = "qemu_test")]
+    lib_main();
 
+    #[cfg(not(feature = "qemu_test"))]
+    unsafe { kernel_main(); } 
 }
 
 pub fn init() {

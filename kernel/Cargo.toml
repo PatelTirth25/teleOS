@@ -21,7 +21,7 @@ features = ["spin_no_std"]
 [[bin]]
 name = "kernel"
 path = "src/main.rs"
-test = true
+test = false
 bench = false
 
 # the profile used for `cargo build`
