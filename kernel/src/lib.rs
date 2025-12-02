@@ -31,10 +31,10 @@ pub fn exit_qemu(code: QemuExitCode) -> ! {
     }
 }
 
+#[cfg(feature = "qemu_test")]
 pub fn lib_main() -> ! {
     println!("emuOS! from Test");
 
-    #[cfg(feature = "qemu_test")]
     test_main();
 
     loop {
