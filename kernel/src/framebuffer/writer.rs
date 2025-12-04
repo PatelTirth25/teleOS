@@ -16,7 +16,7 @@ pub struct Writer {
 impl Writer {
     pub fn new(color: u32) -> Self {
         let height = 1080 / 2 - 4;
-        let width = 1920 / 2;
+        let width = (1920 - 1600) / 2;
         Self {
             color,
             row: 0,
@@ -24,6 +24,10 @@ impl Writer {
             height,
             width,
         }
+    }
+
+    pub fn get_width(&self) -> u64 {
+        self.width * 2
     }
 
     pub fn change_color(&mut self, color: u32) {
@@ -39,15 +43,13 @@ impl Writer {
         let re = rs + 2;
         let ce = cs + 2;
 
-        let mut buffer = BUFFER.lock();
+        let buffer = &BUFFER;
 
         for x in rs..re {
             for y in cs..ce {
                 buffer.write_pixel(x, y, self.color);
             }
         }
-
-        drop(buffer);
     }
 
     pub fn write_char(&mut self, ch: char) {
@@ -96,7 +98,7 @@ impl Writer {
     }
 
     fn scroll(&self) {
-        let mut buffer = BUFFER.lock();
+        let buffer = &BUFFER;
         let scale = buffer.fb.height() / self.height as u64;
         buffer.scroll_lines(scale * 8);
     }

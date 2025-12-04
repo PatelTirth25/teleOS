@@ -44,6 +44,7 @@ pub fn lib_main() -> ! {
 
 fn tests() -> &'static [(&'static str, fn())] {
     use tests::framebuffer::test_println;
+    use tests::framebuffer::test_screen;
     use tests::heap::test_heap_allocations;
     use tests::trivial_assertion;
 
@@ -51,6 +52,7 @@ fn tests() -> &'static [(&'static str, fn())] {
         ("trivial_assertion", trivial_assertion),
         ("test_heap_allocations", test_heap_allocations),
         ("test_println", test_println),
+        ("test_screen", test_screen),
     ]
 }
 
