@@ -1,5 +1,7 @@
 use core::fmt;
 
+use crate::serial_println;
+
 use super::BUFFER;
 use font8x8::legacy::BASIC_LEGACY;
 use lazy_static::lazy_static;
@@ -15,6 +17,8 @@ pub struct Writer {
 
 impl Writer {
     pub fn new(color: u32) -> Self {
+        // 160 character per row, total 67 columns
+
         let height = 1080 / 2 - 4;
         let width = (1920 - 1600) / 2;
         Self {
@@ -85,6 +89,54 @@ impl Writer {
         for ch in s.chars() {
             self.write_char(ch);
         }
+    }
+
+    pub fn write_char_at(&mut self, ch: char) {
+        let erase_color: u32 = 0x0000_0000;
+
+        let ox = self.row;
+        let oy = self.col;
+
+        let rs = 2 * ox;
+        let cs = 2 * oy;
+        let re = rs + 16;
+        let ce = cs + 16;
+
+        let buffer = &BUFFER;
+        for px in rs..re {
+            for py in cs..ce {
+                buffer.write_pixel(px, py, erase_color);
+            }
+        }
+
+        self.write_char(ch);
+    }
+
+    pub fn write_str_at(&mut self, s: &str, row_ind: u64, col_ind: u64) {
+        if row_ind >= self.height / 8 {
+            serial_println!("Row index out of bounds: {}", row_ind);
+            return;
+        }
+        if col_ind >= self.width / 8 {
+            serial_println!("Column index out of bounds: {}", col_ind);
+            return;
+        }
+
+        let row = row_ind * 8;
+        let col = col_ind * 8;
+
+        let old_row = self.row;
+        let old_col = self.col;
+
+        self.row = row;
+        self.col = col;
+
+        for ch in s.chars() {
+            self.write_char_at(ch);
+        }
+
+        self.row = old_row;
+        self.col = old_col;
     }
 
     fn new_line(&mut self) {

@@ -1,3 +1,4 @@
+pub mod fps;
 pub mod screen;
 pub mod writer;
 
