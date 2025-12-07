@@ -1,4 +1,4 @@
-use super::BUFFER;
+use super::{fps::increment_frame_count, BUFFER};
 use lazy_static::lazy_static;
 use spin::Mutex;
 
@@ -27,6 +27,7 @@ impl Screen {
         };
 
         BUFFER.write_frame(flat, 1024, 960, start_col, 0);
+        increment_frame_count();
     }
 }
 
