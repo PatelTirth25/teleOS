@@ -3,8 +3,7 @@
 
 extern crate alloc;
 
-use kernel::{framebuffer::screen::SCREEN, println};
-use x86_64::instructions::hlt;
+use kernel::{framebuffer::screen::{tv, SCREEN}, println};
 
 #[unsafe(no_mangle)]
 pub extern "C" fn kernel_main() -> ! {
@@ -12,8 +11,13 @@ pub extern "C" fn kernel_main() -> ! {
 
     let mut screen = SCREEN.lock();
     loop {
-        screen.write_buffer(&[[0x00FFFFFF; 256]; 240]);
+        screen.write_buffer(&tv::BUFFER1);
+        screen.write_buffer(&tv::BUFFER2);
+        screen.write_buffer(&tv::BUFFER3);
+        screen.write_buffer(&tv::BUFFER4);
     }
 
-   // loop { hlt(); }
+    loop { 
+        x86_64::instructions::hlt(); 
+    }
 }

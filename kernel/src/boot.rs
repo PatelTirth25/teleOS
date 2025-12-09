@@ -1,11 +1,14 @@
 use limine::framebuffer::Framebuffer;
+use limine::mp::Cpu;
 use limine::response::MemoryMapResponse;
 use limine::BaseRevision;
-use limine::request::{FramebufferRequest, HhdmRequest, MemoryMapRequest, RequestsEndMarker, RequestsStartMarker};
+use limine::request::{FramebufferRequest, HhdmRequest, MemoryMapRequest, MpRequest, RequestsEndMarker, RequestsStartMarker};
 use spin::Once;
+use x86_64::instructions::hlt;
+use crate::gdt::{init_gdt, DOUBLE_FAULT_IST_INDEX};
 use crate::memory::heap::init_heap;
 use crate::memory::{self, BootInfoFrameAllocator};
-use crate::{gdt, interrupt};
+use crate::{gdt, interrupt, serial_println};
 #[cfg(feature = "qemu_test")]
 use crate::lib_main;
 #[cfg(not(feature = "qemu_test"))]
@@ -31,6 +34,10 @@ static MEMORY_MAP_REQUEST: MemoryMapRequest = MemoryMapRequest::new();
 
 #[used]
 #[unsafe(link_section = ".requests")]
+static MP_REQUEST: MpRequest = MpRequest::new();
+
+#[used]
+#[unsafe(link_section = ".requests")]
 static HHDM_REQUEST: HhdmRequest = HhdmRequest::new();
 
 /// Define the start and end markers for Limine requests.
@@ -44,6 +51,7 @@ static _END_MARKER: RequestsEndMarker = RequestsEndMarker::new();
 pub struct BootInfo {
     pub framebuffer: Framebuffer<'static>,
     pub memory_map: &'static MemoryMapResponse,
+    pub cpus: &'static [&'static Cpu],
 }
 
 static BOOT_INFO: Once<BootInfo> = Once::new();
@@ -81,9 +89,11 @@ unsafe extern "C" fn kmain() -> ! {
         .expect("No framebuffer available");
 
     let memory_map = MEMORY_MAP_REQUEST.get_response().expect("No memory map available");
+    let cpus = MP_REQUEST.get_response().expect("No MP response from Limine").cpus();
 
-    let boot_info = BootInfo { framebuffer,memory_map };
+    let boot_info = BootInfo { framebuffer,memory_map,cpus };
     BOOT_INFO.call_once(|| boot_info);
+
     init();
 
     #[cfg(feature = "qemu_test")]
@@ -95,15 +105,12 @@ unsafe extern "C" fn kmain() -> ! {
 
 pub fn init() {
     use x86_64::VirtAddr;
-    gdt::init();
-    interrupt::init_idt();
 
     unsafe {
         let mut pics = interrupt::PICS.lock();
         pics.initialize();
         pics.write_masks(0, 0);
     }
-    x86_64::instructions::interrupts::enable();
 
     let hhdm = HHDM_REQUEST.get_response().expect("no HHDM");
     let phys_offset = VirtAddr::new(hhdm.offset());
@@ -112,4 +119,7 @@ pub fn init() {
     let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(boot_info().memory_map) };
 
     init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
+
+    init_gdt();
+
 }

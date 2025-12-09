@@ -38,19 +38,14 @@ copy-to-ventoy: $(IMAGE_NAME).iso
 all: $(IMAGE_NAME).iso
 all: copy-to-ventoy
 
-.PHONY: all-hdd
-all-hdd: $(IMAGE_NAME).hdd
-
 .PHONY: run
 run: run-$(KARCH)
-
-.PHONY: run-hdd
-run-hdd: run-hdd-$(KARCH)
 
 .PHONY: run-x86_64
 run-x86_64: ovmf/ovmf-code-$(KARCH).fd ovmf/ovmf-vars-$(KARCH).fd $(IMAGE_NAME).iso
 	qemu-system-$(KARCH) \
 		-M q35 \
+		-smp 9 \
 		-drive if=pflash,unit=0,format=raw,file=ovmf/ovmf-code-$(KARCH).fd,readonly=on \
 		-drive if=pflash,unit=1,format=raw,file=ovmf/ovmf-vars-$(KARCH).fd \
 		-cdrom $(IMAGE_NAME).iso \
@@ -60,37 +55,6 @@ run-x86_64: ovmf/ovmf-code-$(KARCH).fd ovmf/ovmf-vars-$(KARCH).fd $(IMAGE_NAME).
 		-display gtk,gl=on \
 		-serial stdio \
 		-no-reboot \
-		$(QEMUFLAGS)
-
-.PHONY: run-hdd-x86_64
-run-hdd-x86_64: ovmf/ovmf-code-$(KARCH).fd ovmf/ovmf-vars-$(KARCH).fd $(IMAGE_NAME).hdd
-	qemu-system-$(KARCH) \
-		-M q35 \
-		-drive if=pflash,unit=0,format=raw,file=ovmf/ovmf-code-$(KARCH).fd,readonly=on \
-		-drive if=pflash,unit=1,format=raw,file=ovmf/ovmf-vars-$(KARCH).fd \
-		-hda $(IMAGE_NAME).hdd \
-		-device isa-debug-exit,iobase=0xf4,iosize=0x04 \
-		-vga none \
-		-device virtio-vga \
-		-display gtk,gl=on \
-		-serial stdio \
-		-no-reboot \
-		$(QEMUFLAGS)
-
-
-.PHONY: run-bios
-run-bios: $(IMAGE_NAME).iso
-	qemu-system-$(KARCH) \
-		-M q35 \
-		-cdrom $(IMAGE_NAME).iso \
-		-boot d \
-		$(QEMUFLAGS)
-
-.PHONY: run-hdd-bios
-run-hdd-bios: $(IMAGE_NAME).hdd
-	qemu-system-$(KARCH) \
-		-M q35 \
-		-hda $(IMAGE_NAME).hdd \
 		$(QEMUFLAGS)
 
 ovmf/ovmf-code-$(KARCH).fd:
@@ -130,27 +94,10 @@ ifeq ($(KARCH),x86_64)
 endif
 	rm -rf iso_root
 
-$(IMAGE_NAME).hdd: limine/limine kernel
-	rm -f $(IMAGE_NAME).hdd
-	dd if=/dev/zero bs=1M count=0 seek=64 of=$(IMAGE_NAME).hdd
-	sgdisk $(IMAGE_NAME).hdd -n 1:2048 -t 1:ef00
-ifeq ($(KARCH),x86_64)
-	./limine/limine bios-install $(IMAGE_NAME).hdd
-endif
-	mformat -i $(IMAGE_NAME).hdd@@1M
-	mmd -i $(IMAGE_NAME).hdd@@1M ::/EFI ::/EFI/BOOT ::/boot ::/boot/limine
-	mcopy -i $(IMAGE_NAME).hdd@@1M kernel/bin-$(KARCH)/kernel ::/boot
-	mcopy -i $(IMAGE_NAME).hdd@@1M limine.conf ::/boot/limine
-ifeq ($(KARCH),x86_64)
-	mcopy -i $(IMAGE_NAME).hdd@@1M limine/limine-bios.sys ::/boot/limine
-	mcopy -i $(IMAGE_NAME).hdd@@1M limine/BOOTX64.EFI ::/EFI/BOOT
-	mcopy -i $(IMAGE_NAME).hdd@@1M limine/BOOTIA32.EFI ::/EFI/BOOT
-endif
-
 .PHONY: clean
 clean:
 	$(MAKE) -C kernel clean
-	rm -rf iso_root $(IMAGE_NAME).iso $(IMAGE_NAME).hdd
+	rm -rf iso_root $(IMAGE_NAME).iso
 
 .PHONY: distclean
 distclean: clean

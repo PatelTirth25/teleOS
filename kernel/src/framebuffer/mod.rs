@@ -37,7 +37,6 @@ impl Buffer {
     }
 
     pub fn write_frame(&self, src: &[u32], src_w: u64, src_h: u64, dst_col: u64, dst_row: u64) {
-        // sanity checks
         let fb_width = self.fb.width() as u64;
         let fb_height = self.fb.height() as u64;
         if src_w == 0 || src_h == 0 {

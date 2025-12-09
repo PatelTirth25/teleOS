@@ -2,7 +2,6 @@ use crate::framebuffer::fps::FPS_COUNTER;
 use crate::gdt;
 use crate::print;
 use crate::println;
-use crate::serial_println;
 use lazy_static::lazy_static;
 use pic8259::ChainedPics;
 use spin;
