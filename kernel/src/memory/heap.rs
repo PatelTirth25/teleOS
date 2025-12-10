@@ -7,7 +7,7 @@ use x86_64::{
 };
 
 pub const HEAP_START: usize = 0x_4444_4444_0000;
-pub const HEAP_SIZE: usize = 500 * 1024; // 500 KiB
+pub const HEAP_SIZE: usize = 1000 * 1024; // 1000 KiB
 
 pub fn init_heap(
     mapper: &mut impl Mapper<Size4KiB>,

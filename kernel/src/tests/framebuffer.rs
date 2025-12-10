@@ -1,3 +1,5 @@
+use alloc::boxed::Box;
+
 use crate::{framebuffer::screen::SCREEN, println};
 
 pub fn test_println() {
@@ -6,54 +8,82 @@ pub fn test_println() {
     }
 }
 
-pub fn test_screen() {
-    let mut buf: [[u32; SRC_W]; SRC_H] = [[0; SRC_W]; SRC_H];
-
-    // solid white
-    fill_solid(&mut buf, 0x00FFFFFF);
-    {
-        let mut screen = SCREEN.lock();
-        screen.write_buffer(&buf);
-    }
-
-    // vertical bars
-    fill_vertical_bars(&mut buf, 8);
-    {
-        let mut screen = SCREEN.lock();
-        screen.write_buffer(&buf);
-    }
-
-    // gradient
-    fill_horizontal_gradient(&mut buf, 0x00FF0000, 0x000000FF);
-    {
-        let mut screen = SCREEN.lock();
-        screen.write_buffer(&buf);
-    }
-
-    // checkerboard
-    fill_checkerboard(&mut buf, 16, 0x00CCCCCC, 0x00333333);
-    {
-        let mut screen = SCREEN.lock();
-        screen.write_buffer(&buf);
-    }
-
-    // palette tiles
-    fill_palette_tiles(&mut buf, 32, 32);
-    {
-        let mut screen = SCREEN.lock();
-        screen.write_buffer(&buf);
-    }
-
-    // border cross
-    fill_border_cross(&mut buf, 4, 0x00FF00FF, 0x0000FF00);
-    {
-        let mut screen = SCREEN.lock();
-        screen.write_buffer(&buf);
-    }
-}
-
 const SRC_W: usize = 256;
 const SRC_H: usize = 240;
+
+pub fn test_screen() {
+    // 1) allocate uninitialized boxed array on the heap (no big stack temp)
+    let mut boxed_uninit = Box::<[[u32; SRC_W]; SRC_H]>::new_uninit();
+
+    // 2) get a pointer to the first row so we can initialize in-place
+    //    as *mut [u32; SRC_W] so row-by-row writes are easy
+    let row_ptr = boxed_uninit.as_mut_ptr() as *mut [u32; SRC_W];
+
+    // 3) initialize every element in-place (don't create any large stack arrays)
+    unsafe {
+        for r in 0..SRC_H {
+            // pointer to the first u32 of row r
+            let row_u32_ptr = (row_ptr.add(r)) as *mut u32;
+            for c in 0..SRC_W {
+                // initial value doesn't matter much; fill with black (0)
+                core::ptr::write(row_u32_ptr.add(c), 0x00000000u32);
+            }
+        }
+    }
+
+    // 4) mark initialized and turn into Box<[[u32;SRC_W];SRC_H]>
+    let boxed = unsafe { boxed_uninit.assume_init() };
+
+    // 5) leak the box to obtain a &'static mut reference (keeps it alive for APs)
+    let buf_static: &'static mut [[u32; SRC_W]; SRC_H] = Box::leak(boxed);
+
+    // From now on `buf_static` is a &'static mut; we can reuse it with your fill_* helpers.
+    {
+        // SOLID WHITE
+        fill_solid(buf_static, 0x00FFFFFF);
+        let mut screen = SCREEN.lock();
+        screen.write_buffer(&*buf_static);
+    }
+
+    {
+        // VERTICAL BARS
+        fill_vertical_bars(buf_static, 8);
+        let mut screen = SCREEN.lock();
+        screen.write_buffer(&*buf_static);
+    }
+
+    {
+        // HORIZONTAL GRADIENT
+        fill_horizontal_gradient(buf_static, 0x00FF0000, 0x000000FF);
+        let mut screen = SCREEN.lock();
+        screen.write_buffer(&*buf_static);
+    }
+
+    {
+        // CHECKERBOARD
+        fill_checkerboard(buf_static, 16, 0x00CCCCCC, 0x00333333);
+        let mut screen = SCREEN.lock();
+        screen.write_buffer(&*buf_static);
+    }
+
+    {
+        // PALETTE TILES
+        fill_palette_tiles(buf_static, 32, 32);
+        let mut screen = SCREEN.lock();
+        screen.write_buffer(&*buf_static);
+    }
+
+    {
+        // BORDER + CROSS
+        fill_border_cross(buf_static, 4, 0x00FF00FF, 0x0000FF00);
+        let mut screen = SCREEN.lock();
+        screen.write_buffer(&*buf_static);
+    }
+
+    // NOTE: We intentionally leaked the box (Box::leak). If you want to free it later,
+    // store the raw pointer / Layout so you can reconstruct and free it. For tests/demos
+    // leaking once is normally acceptable.
+}
 
 /// Fill whole buffer with one color.
 fn fill_solid(dst: &mut [[u32; SRC_W]; SRC_H], color: u32) {
@@ -172,43 +202,6 @@ fn fill_palette_tiles(dst: &mut [[u32; SRC_W]; SRC_H], tile_w: usize, tile_h: us
             let ty = (y / th) % 4;
             let idx = tx + ty * 4; // 0..15
             dst[y][x] = palette[idx];
-        }
-    }
-}
-
-/// Moving box animation: draws a colored box that moves across the screen.
-/// Call repeatedly with increasing frame index to animate.
-///
-/// box_w/box_h are box size in source pixels.
-fn fill_moving_box(
-    dst: &mut [[u32; SRC_W]; SRC_H],
-    frame: usize,
-    box_w: usize,
-    box_h: usize,
-    color: u32,
-    bg: u32,
-) {
-    // clear to bg
-    for y in 0..SRC_H {
-        for x in 0..SRC_W {
-            dst[y][x] = bg;
-        }
-    }
-
-    let path_w = SRC_W.saturating_sub(box_w + 2);
-    let path_h = SRC_H.saturating_sub(box_h + 2);
-
-    // position along a simple Lissajous-like path using frame
-    let px = (frame % (path_w.max(1))) as usize + 1;
-    let py = ((frame / (path_w.max(1))).wrapping_mul(3) % (path_h.max(1))) as usize + 1;
-
-    for yo in 0..box_h {
-        for xo in 0..box_w {
-            let x = px + xo;
-            let y = py + yo;
-            if x < SRC_W && y < SRC_H {
-                dst[y][x] = color;
-            }
         }
     }
 }

@@ -23,9 +23,12 @@ impl Screen {
             serial_println!("write_buffer: not enough APs to multithread (need >= 2 APs)");
             return;
         }
+        // serial_println!("write_buffer: {} APs", parts);
 
         let start_col = self.width_offset as usize;
         let src_ptr = buffer as *const [[u32; 256]; 240] as usize;
+
+        // serial_println!("Src ptr: {:#x}", src_ptr);
 
         // publish work: set pointer + params before bumping seq
         WORK.src_ptr.store(src_ptr, Ordering::Release);

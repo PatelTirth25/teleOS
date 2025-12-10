@@ -15,7 +15,7 @@ use crate::boot::boot_info;
 
 /// tune these values as needed
 pub const MAX_CPUS: usize = 9;
-pub const KERNEL_STACK_SIZE: usize = 128 * 1024; 
+pub const KERNEL_STACK_SIZE: usize = 1000 * 1024; // 1000 KiB
 pub const DOUBLE_FAULT_IST_INDEX: u16 = 0;
 
 // Choose a reasonable size for the DF stack per CPU:

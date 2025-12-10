@@ -82,6 +82,7 @@ pub fn ap_worker_loop(core_index: usize) -> ! {
 
     loop {
         let seq = WORK.seq.load(Ordering::Acquire);
+
         if seq == last_seen {
             // no new frame; low-latency spin
             spin_loop();
