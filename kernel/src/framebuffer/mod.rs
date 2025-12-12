@@ -20,6 +20,23 @@ impl Buffer {
         }
     }
 
+    pub fn write_while_screen(&self) {
+        let h = self.fb.height();
+        let w = self.fb.width();
+
+        let total_pixels = w * h;
+        let color_u32: u32 = 0x00FFFFFF;
+
+        unsafe {
+            let fb_base = self.fb.addr();
+            let pixel_ptr = fb_base as *mut u32;
+
+            let buffer_slice = core::slice::from_raw_parts_mut(pixel_ptr, total_pixels as usize);
+
+            buffer_slice.fill(color_u32);
+        }
+    }
+
     pub fn write_pixel(&self, x: u64, y: u64, color: u32) {
         if (x >= self.fb.height()) || (y >= self.fb.width()) {
             serial_println!("Buffer out of bounds: {}x{}", x, y);

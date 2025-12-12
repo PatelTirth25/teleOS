@@ -3,13 +3,14 @@
 
 extern crate alloc;
 
-use kernel::{framebuffer::screen::{tv, SCREEN}, println};
+use alloc::vec::Vec;
+use kernel::{boot::boot_info, framebuffer::screen::{tv, SCREEN}, println};
 
 #[unsafe(no_mangle)]
 pub extern "C" fn kernel_main() -> ! {
     println!("FPS: 0");
 
-     
+
     let mut screen = SCREEN.lock();
     loop {
         screen.write_buffer(&tv::BUFFER1);

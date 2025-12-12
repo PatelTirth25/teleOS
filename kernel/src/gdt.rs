@@ -14,13 +14,12 @@ use x86_64::{PrivilegeLevel, VirtAddr};
 use crate::boot::boot_info;
 
 /// tune these values as needed
-pub const MAX_CPUS: usize = 9;
-pub const KERNEL_STACK_SIZE: usize = 1000 * 1024; // 1000 KiB
-pub const DOUBLE_FAULT_IST_INDEX: u16 = 0;
+pub const MAX_CPUS: usize = 12;
+pub const KERNEL_STACK_SIZE: usize = 5 * 1024 * 1024; // 5 MB
+pub const DOUBLE_FAULT_IST_INDEX: u16 = 1;
 
 // Choose a reasonable size for the DF stack per CPU:
-const DF_STACK_SIZE: usize = 16 * 1024; // 16 KiB (adjust if you want bigger)
-const DF_STACK_ALIGN: u64 = 16; // stack alignment (ABI)
+const DF_STACK_SIZE: usize = 64 * 1024; // 64 KiB (adjust if you want bigger)
 
 /// Static per-cpu kernel stacks (stable addresses)
 #[unsafe(link_section = ".bss.stack")]
@@ -107,10 +106,12 @@ pub fn set_stack_for_cpu(cpu_index: usize, stack_top: VirtAddr) {
 
 /// Helper: return kernel stack top for cpu_index (VirtAddr)
 pub fn kernel_stack_top(cpu_index: usize) -> VirtAddr {
-    assert!(cpu_index < MAX_CPUS);
     unsafe {
         let base = KERNEL_STACKS[cpu_index].as_ptr() as u64;
-        VirtAddr::new(base + KERNEL_STACK_SIZE as u64)
+        let top = base + KERNEL_STACK_SIZE as u64;
+        // Align to 16 bytes
+        let aligned_top = (top / 16) * 16;
+        VirtAddr::new(aligned_top)
     }
 }
 
@@ -159,13 +160,11 @@ pub fn load_tss_for_core(core_index: usize) {
 /// Return the top-of-stack VirtAddr for the DF stack of `cpu_index`.
 /// The returned address is 16-byte aligned.
 pub fn df_stack_top_for(cpu_index: usize) -> VirtAddr {
-    assert!(cpu_index < MAX_CPUS);
     unsafe {
         let base = DF_STACKS[cpu_index].as_ptr() as u64;
-        // top before alignment
         let top = base + DF_STACK_SIZE as u64;
-        // align down to 16 bytes (stack grows down)
-        let aligned_top = top & !(DF_STACK_ALIGN - 1);
+        // Ensure 16-byte alignment
+        let aligned_top = (top / 16) * 16;
         VirtAddr::new(aligned_top)
     }
 }

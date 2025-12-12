@@ -4,11 +4,10 @@ use limine::response::MemoryMapResponse;
 use limine::BaseRevision;
 use limine::request::{FramebufferRequest, HhdmRequest, MemoryMapRequest, MpRequest, RequestsEndMarker, RequestsStartMarker};
 use spin::Once;
-use x86_64::instructions::hlt;
-use crate::gdt::{init_gdt, DOUBLE_FAULT_IST_INDEX};
+use crate::gdt::init_gdt;
 use crate::memory::heap::init_heap;
 use crate::memory::{self, BootInfoFrameAllocator};
-use crate::{gdt, interrupt, serial_println};
+use crate::{interrupt, println, serial_println};
 #[cfg(feature = "qemu_test")]
 use crate::lib_main;
 #[cfg(not(feature = "qemu_test"))]
@@ -68,10 +67,34 @@ unsafe extern "C" fn kmain() -> ! {
         .get_response()
         .expect("No framebuffer response from Limine");
 
+
+
+    // pick only 1920x1080 or high buffer, else error out that screen res not supported
+    let framebuffer = {
+        let mut frame_to_choose = None;
+        for fb in fb_response.framebuffers() {
+            if fb.height() >= 1080 && fb.width() >= 1920 {
+                frame_to_choose = Some(fb);
+                break;
+            }
+        }
+        frame_to_choose.unwrap_or_else(|| panic!("No screen resolution with  1920x1080 or higher is available"))
+    };
+
+
+    let memory_map = MEMORY_MAP_REQUEST.get_response().expect("No memory map available");
+    let cpus = MP_REQUEST.get_response().expect("No MP response from Limine").cpus();
+
+    let boot_info = BootInfo { framebuffer,memory_map,cpus };
+    BOOT_INFO.call_once(|| boot_info);
+
+    init();
+
+
     // list all framebuffers
 
     // for (i, fb) in fb_response.framebuffers().enumerate() {
-    //     serial_println!(
+    //     println!(
     //         "Framebuffer {}: {}x{} | Pitch: {} | BPP: {} | Address: {:#x}",
     //         i,
     //         fb.width(),
@@ -81,20 +104,6 @@ unsafe extern "C" fn kmain() -> ! {
     //         fb.addr() as usize
     //     );
     // }
-
-    // pick the first framebuffer for now
-    let framebuffer = fb_response
-        .framebuffers()
-        .next()
-        .expect("No framebuffer available");
-
-    let memory_map = MEMORY_MAP_REQUEST.get_response().expect("No memory map available");
-    let cpus = MP_REQUEST.get_response().expect("No MP response from Limine").cpus();
-
-    let boot_info = BootInfo { framebuffer,memory_map,cpus };
-    BOOT_INFO.call_once(|| boot_info);
-
-    init();
 
     #[cfg(feature = "qemu_test")]
     lib_main();
