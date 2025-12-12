@@ -3,7 +3,6 @@
 
 extern crate alloc;
 
-use alloc::vec::Vec;
 use kernel::{boot::boot_info, framebuffer::screen::{tv, SCREEN}, println};
 
 #[unsafe(no_mangle)]

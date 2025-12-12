@@ -7,7 +7,7 @@ use spin::Once;
 use crate::gdt::init_gdt;
 use crate::memory::heap::init_heap;
 use crate::memory::{self, BootInfoFrameAllocator};
-use crate::{interrupt, println, serial_println};
+
 #[cfg(feature = "qemu_test")]
 use crate::lib_main;
 #[cfg(not(feature = "qemu_test"))]
@@ -115,12 +115,6 @@ unsafe extern "C" fn kmain() -> ! {
 pub fn init() {
     use x86_64::VirtAddr;
 
-    unsafe {
-        let mut pics = interrupt::PICS.lock();
-        pics.initialize();
-        pics.write_masks(0, 0);
-    }
-
     let hhdm = HHDM_REQUEST.get_response().expect("no HHDM");
     let phys_offset = VirtAddr::new(hhdm.offset());
 
@@ -128,6 +122,11 @@ pub fn init() {
     let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(boot_info().memory_map) };
 
     init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
+
+    // Map APIC base address
+    unsafe {
+        memory::map_apic(&mut mapper, &mut frame_allocator).expect("Failed to map APIC");
+    }
 
     init_gdt();
 

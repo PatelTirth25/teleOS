@@ -1,3 +1,4 @@
+use crate::apic;
 use crate::framebuffer::fps::FPS_COUNTER;
 use crate::gdt;
 use crate::print;
@@ -55,10 +56,7 @@ pub fn init_idt() {
 
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
     println!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
-    unsafe {
-        PICS.lock()
-            .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
-    }
+    apic::end_of_interrupt();
 }
 
 extern "x86-interrupt" fn double_fault_handler(stack_frame: InterruptStackFrame, _error_code: u64) {
@@ -69,10 +67,8 @@ extern "x86-interrupt" fn double_fault_handler(stack_frame: InterruptStackFrame,
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
     FPS_COUNTER.lock().tick();
 
-    unsafe {
-        PICS.lock()
-            .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
-    }
+    // Use APIC EOI instead of PIC
+    apic::end_of_interrupt();
 }
 
 extern "x86-interrupt" fn page_fault_handler(
@@ -118,6 +114,7 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
         }
     }
 
+    // Use PIC EOI for keyboard (keep keyboard on PIC)
     unsafe {
         PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());

@@ -25,14 +25,17 @@ impl FpsCounter {
     pub fn tick(&mut self) {
         let ticks = self.ticks.fetch_add(1, Ordering::Relaxed) + 1;
 
+        // Calculate FPS every 100 ticks (1 second at 100Hz timer)
         if ticks - self.last_print_ticks >= 100 {
             let frames = FRAME_COUNT.swap(0, Ordering::Relaxed);
-            self.last_fps.store(frames, Ordering::Relaxed);
+            // frames per 100 ticks = frames per second (since timer is 100Hz)
+            let fps = frames;
+            self.last_fps.store(fps, Ordering::Relaxed);
             self.last_print_ticks = ticks;
 
             // Print FPS to the screen
             let mut writer = WRITER.lock();
-            writer.write_str_at(&frames.to_string(), 0, 5);
+            writer.write_str_at(&fps.to_string(), 0, 5);
         }
     }
 }

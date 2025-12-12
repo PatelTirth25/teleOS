@@ -16,7 +16,7 @@ use crate::boot::boot_info;
 /// tune these values as needed
 pub const MAX_CPUS: usize = 12;
 pub const KERNEL_STACK_SIZE: usize = 5 * 1024 * 1024; // 5 MB
-pub const DOUBLE_FAULT_IST_INDEX: u16 = 1;
+pub const DOUBLE_FAULT_IST_INDEX: u16 = 0;
 
 // Choose a reasonable size for the DF stack per CPU:
 const DF_STACK_SIZE: usize = 64 * 1024; // 64 KiB (adjust if you want bigger)
@@ -191,6 +191,23 @@ pub fn init_gdt() {
     // 4) load IDT on BSP
     crate::interrupt::init_idt();
 
+    // Initialize PIC first
+    unsafe {
+        let mut pics = crate::interrupt::PICS.lock();
+        pics.initialize();
+        pics.write_masks(0, 0);
+    }
+
+    // Initialize APIC and disable only PIC timer
+    if let Err(e) = crate::apic::init_apic() {
+        panic!("Failed to initialize APIC: {}", e);
+    }
+
+    if let Err(e) = crate::apic::init_apic_timer() {
+        panic!("Failed to initialize APIC timer: {}", e);
+    }
+    crate::apic::disable_pic_timer();
+
     // 5) publish stack top so trampoline (or direct entry) can pick it up on AP
     for (i, cpu) in boot_info.cpus.iter().enumerate() {
         cpu.extra.store(crate::gdt::kernel_stack_top(i).as_u64(), core::sync::atomic::Ordering::SeqCst);
@@ -236,6 +253,11 @@ pub unsafe extern "C" fn ap_main_direct(cpu_ptr: &Cpu) -> ! {
 
     // load IDT on this AP as well
     crate::interrupt::init_idt();
+
+    // Initialize APIC for this AP core
+    if let Err(e) = crate::apic::init_apic() {
+        panic!("Failed to initialize APIC on AP: {}", e);
+    }
 
     // Now safe to enable interrupts on this AP
     x86_64::instructions::interrupts::enable();

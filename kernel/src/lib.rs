@@ -10,6 +10,7 @@ pub mod gdt;
 pub mod interrupt;
 pub mod memory;
 pub mod serial;
+pub mod apic;
 mod tests;
 
 use x86_64::instructions::hlt;
