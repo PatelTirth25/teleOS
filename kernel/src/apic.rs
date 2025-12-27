@@ -1,8 +1,6 @@
 use x86_64::instructions::port::Port;
 use x86_64::registers::model_specific::Msr;
 
-use crate::serial_println;
-
 // APIC Timer Vector (interrupt number)
 pub const APIC_TIMER_VECTOR: u8 = 32;
 

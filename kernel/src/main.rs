@@ -3,7 +3,7 @@
 
 extern crate alloc;
 
-use kernel::{boot::boot_info, framebuffer::screen::{tv, SCREEN}, println};
+use kernel::{framebuffer::screen::{tv, SCREEN}, println};
 
 #[unsafe(no_mangle)]
 pub extern "C" fn kernel_main() -> ! {
@@ -18,9 +18,9 @@ pub extern "C" fn kernel_main() -> ! {
         screen.write_buffer(&tv::BUFFER4);
     }
 
-    loop { 
-        x86_64::instructions::hlt(); 
-    }
+    // loop { 
+    //     x86_64::instructions::hlt(); 
+    // }
 }
 
 // 3 methods to write buffer on screen without overflowing stack:

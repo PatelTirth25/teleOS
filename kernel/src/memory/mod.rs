@@ -2,7 +2,9 @@ pub mod heap;
 
 use limine::{memory_map::EntryType, response::MemoryMapResponse};
 use x86_64::{
-    structures::paging::{FrameAllocator, OffsetPageTable, PageTable, PhysFrame, Size4KiB, Page, Mapper, page_table::FrameError},
+    structures::paging::{
+        FrameAllocator, Mapper, OffsetPageTable, Page, PageTable, PhysFrame, Size4KiB,
+    },
     PhysAddr, VirtAddr,
 };
 
@@ -64,18 +66,18 @@ pub unsafe fn map_apic(
 ) -> Result<(), x86_64::structures::paging::mapper::MapToError<Size4KiB>> {
     let apic_phys = PhysAddr::new(0xFEE0_0000);
     let apic_page = Page::containing_address(VirtAddr::new(0xFEE0_0000));
-    
+
     // Map APIC page as writeable
     unsafe {
-        mapper.map_to(
+        let _ = mapper.map_to(
             apic_page,
             PhysFrame::containing_address(apic_phys),
-            x86_64::structures::paging::PageTableFlags::PRESENT 
+            x86_64::structures::paging::PageTableFlags::PRESENT
                 | x86_64::structures::paging::PageTableFlags::WRITABLE
                 | x86_64::structures::paging::PageTableFlags::NO_EXECUTE,
             frame_allocator,
         )?;
     }
-    
+
     Ok(())
 }
